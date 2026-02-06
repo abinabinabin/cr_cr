@@ -31,7 +31,7 @@ jobs:
             --limit 1000 \
             --rank 1000 \
             --lang en \
-            --delay 0.35 \
+            --delay 1.0 \
             --out royaleapi_ranked_cache.json
 
       - name: Commit changes
