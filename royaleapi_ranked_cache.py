@@ -20,6 +20,11 @@ BATTLE_SELECTORS = [
 ]
 
 CARD_IMG_SELECTOR = "img.deck_card, img[data-card-key]"
+TEAM_SELECTORS = [
+    "div.team-segment",
+    "div.team_segment",
+    "div.team",
+]
 
 
 def build_url(rank: int, lang: str, before: int | None) -> str:
@@ -82,7 +87,24 @@ def parse_deck_keys_from_imgs(imgs) -> list[str]:
     return keys
 
 
+def _parse_deck_from_segment(seg) -> list[str]:
+    imgs = seg.select(CARD_IMG_SELECTOR)
+    return parse_deck_keys_from_imgs(imgs)
+
+
 def parse_matches_from_battle_el(el) -> list[dict]:
+    # 1) 팀 세그먼트 기반(왼쪽=승리, 오른쪽=패배)
+    team_segments = []
+    for sel in TEAM_SELECTORS:
+        team_segments.extend(el.select(sel))
+
+    if len(team_segments) >= 2:
+        winner = _parse_deck_from_segment(team_segments[0])
+        loser = _parse_deck_from_segment(team_segments[1])
+        if len(winner) >= 8 and len(loser) >= 8:
+            return [{"winner": winner[:8], "loser": loser[:8]}]
+
+    # 2) fallback: 카드 이미지를 순서대로 8/8로 자름
     imgs = el.select(CARD_IMG_SELECTOR)
     keys = parse_deck_keys_from_imgs(imgs)
     if len(keys) < 16:
