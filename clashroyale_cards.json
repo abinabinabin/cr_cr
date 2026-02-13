@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-02-06T09:58:26.227652+00:00",
+  "fetchedAt": "2026-02-13T13:27:32.459402+00:00",
   "items": [
     {
       "name": "Knight",
@@ -440,9 +440,11 @@
       "name": "Mega Minion",
       "id": 26000039,
       "maxLevel": 14,
+      "maxEvolutionLevel": 2,
       "elixirCost": 3,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/-T_e4YLbuhPBKbYnBwQfXgynNpp5eOIN_0RracYwL9c.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/-T_e4YLbuhPBKbYnBwQfXgynNpp5eOIN_0RracYwL9c.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/-T_e4YLbuhPBKbYnBwQfXgynNpp5eOIN_0RracYwL9c.png"
       },
       "rarity": "rare"
     },
