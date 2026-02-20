@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import json
-import math
 import os
 import re
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlencode, urljoin, urlparse, parse_qs
+from urllib.parse import urlencode, parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -99,6 +100,14 @@ def count_payload_matches(payload: dict | None) -> int:
     if isinstance(total, int):
         return total
     return 0
+
+
+def resolve_empty_exit_code(mode: str, existing_total: int) -> int:
+    if mode == "success":
+        return 0
+    if mode == "success-if-existing":
+        return 0 if existing_total > 0 else 2
+    return 2
 
 
 def extract_next_before(soup: BeautifulSoup) -> int | None:
@@ -207,13 +216,35 @@ def main() -> int:
     ap.add_argument("--rank", type=int, default=1000)
     ap.add_argument("--lang", type=str, default="en")
     ap.add_argument("--delay", type=float, default=0.35)
-    ap.add_argument("--out", type=str, default="scripts/royaleapi_ranked_cache.json")
+    ap.add_argument("--out", type=str, default="royaleapi_ranked_cache.json")
+    ap.add_argument(
+        "--empty-exit-mode",
+        choices=("fail", "success-if-existing", "success"),
+        default="success-if-existing",
+        help=(
+            "Behavior when fetched matches are 0: "
+            "fail=exit 2, success-if-existing=exit 0 only if existing cache has matches, "
+            "success=always exit 0."
+        ),
+    )
+    ap.add_argument(
+        "--fail-on-empty",
+        action="store_true",
+        help="Shortcut for --empty-exit-mode fail.",
+    )
     ap.add_argument(
         "--allow-empty-success",
         action="store_true",
-        help="Exit 0 even when no new matches were fetched.",
+        help="Shortcut for --empty-exit-mode success.",
     )
     args = ap.parse_args()
+
+    if args.fail_on_empty and args.allow_empty_success:
+        ap.error("Use only one of --fail-on-empty or --allow-empty-success.")
+    if args.fail_on_empty:
+        args.empty_exit_mode = "fail"
+    elif args.allow_empty_success:
+        args.empty_exit_mode = "success"
 
     results: list[dict] = []
     before = None
@@ -250,7 +281,9 @@ def main() -> int:
             print(f"[result] fallback_to_existing matches={existing_total}")
         else:
             print("[result] no_existing_cache_available")
-        return 0 if args.allow_empty_success else 2
+        exit_code = resolve_empty_exit_code(args.empty_exit_mode, existing_total)
+        print(f"[result] empty_exit_mode={args.empty_exit_mode} exit_code={exit_code}")
+        return exit_code
 
     top_cards = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:3]
     top_cards_out = [
@@ -272,6 +305,9 @@ def main() -> int:
         "matches": results,
     }
 
+    out_dir = os.path.dirname(os.path.abspath(args.out))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     tmp_out = f"{args.out}.tmp"
     with open(tmp_out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
