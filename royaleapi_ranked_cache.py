@@ -2,6 +2,7 @@
 import argparse
 import json
 import math
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -25,6 +26,11 @@ TEAM_SELECTORS = [
     "div.team_segment",
     "div.team",
 ]
+BLOCK_TEXT_MARKERS = (
+    "just a moment",
+    "cf-browser-verification",
+    "checking your browser before accessing",
+)
 
 
 def build_url(rank: int, lang: str, before: int | None) -> str:
@@ -34,7 +40,12 @@ def build_url(rank: int, lang: str, before: int | None) -> str:
     return f"{BASE}/decks/ranked?{urlencode(params)}"
 
 
-def fetch_html(url: str) -> str | None:
+def looks_like_block_page(html: str) -> bool:
+    lower = html.lower()
+    return any(marker in lower for marker in BLOCK_TEXT_MARKERS)
+
+
+def fetch_html(url: str, *, max_attempts: int = 3, retry_delay: float = 1.0) -> str | None:
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -43,13 +54,51 @@ def fetch_html(url: str) -> str | None:
         ),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
-    try:
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code != 200:
-            return None
-        return r.text
-    except Exception:
+    for attempt in range(1, max_attempts + 1):
+        try:
+            r = requests.get(url, headers=headers, timeout=15)
+            if r.status_code != 200:
+                print(
+                    f"[fetch_html] status={r.status_code} attempt={attempt}/{max_attempts} url={url}"
+                )
+            elif looks_like_block_page(r.text):
+                print(
+                    f"[fetch_html] blocked_page_detected attempt={attempt}/{max_attempts} url={url}"
+                )
+            else:
+                return r.text
+        except Exception as e:
+            print(
+                f"[fetch_html] exception attempt={attempt}/{max_attempts} url={url} error={e}"
+            )
+        if attempt < max_attempts:
+            time.sleep(retry_delay)
+    return None
+
+
+def load_existing_payload(path: str) -> dict | None:
+    if not os.path.exists(path):
         return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        if isinstance(payload, dict):
+            return payload
+    except Exception as e:
+        print(f"[cache] failed_to_read_existing path={path} error={e}")
+    return None
+
+
+def count_payload_matches(payload: dict | None) -> int:
+    if not payload or not isinstance(payload, dict):
+        return 0
+    matches = payload.get("matches")
+    if isinstance(matches, list):
+        return len(matches)
+    total = payload.get("totalMatches")
+    if isinstance(total, int):
+        return total
+    return 0
 
 
 def extract_next_before(soup: BeautifulSoup) -> int | None:
@@ -159,18 +208,29 @@ def main() -> int:
     ap.add_argument("--lang", type=str, default="en")
     ap.add_argument("--delay", type=float, default=0.35)
     ap.add_argument("--out", type=str, default="scripts/royaleapi_ranked_cache.json")
+    ap.add_argument(
+        "--allow-empty-success",
+        action="store_true",
+        help="Exit 0 even when no new matches were fetched.",
+    )
     args = ap.parse_args()
 
     results: list[dict] = []
     before = None
+    existing_payload = load_existing_payload(args.out)
+    existing_total = count_payload_matches(existing_payload)
+    if existing_total > 0:
+        print(f"[cache] existing_matches={existing_total} path={args.out}")
 
     while len(results) < args.limit:
         url = build_url(rank=args.rank, lang=args.lang, before=before)
         html = fetch_html(url)
         if not html:
+            print(f"[crawl] stop:no_html url={url}")
             break
         matches = parse_matches(html)
         if not matches:
+            print(f"[crawl] stop:no_matches url={url}")
             break
         for m in matches:
             if len(results) >= args.limit:
@@ -184,6 +244,14 @@ def main() -> int:
 
     counts = card_counts(results)
     total_matches = len(results)
+    if total_matches == 0:
+        print("[result] fetched_matches=0, keeping existing cache unchanged")
+        if existing_total > 0:
+            print(f"[result] fallback_to_existing matches={existing_total}")
+        else:
+            print("[result] no_existing_cache_available")
+        return 0 if args.allow_empty_success else 2
+
     top_cards = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:3]
     top_cards_out = [
         {
@@ -204,8 +272,11 @@ def main() -> int:
         "matches": results,
     }
 
-    with open(args.out, "w", encoding="utf-8") as f:
+    tmp_out = f"{args.out}.tmp"
+    with open(tmp_out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_out, args.out)
+    print(f"[result] wrote_matches={total_matches} path={args.out}")
 
     return 0
 
