@@ -29,7 +29,7 @@ jobs:
       - name: Fetch ranked matches
         run: |
           python royaleapi_ranked_cache.py \
-            --limit 3000 \
+            --limit 5000 \
             --rank 1000 \
             --lang en \
             --delay 1.0 \
