@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-02-13T13:27:32.459402+00:00",
+  "fetchedAt": "2026-03-02T09:06:57.053032+00:00",
   "items": [
     {
       "name": "Knight",
@@ -694,9 +694,11 @@
       "name": "Magic Archer",
       "id": 26000062,
       "maxLevel": 8,
+      "maxEvolutionLevel": 2,
       "elixirCost": 4,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/Avli3W7BxU9HQ2SoLiXnBgGx25FoNXUSFm7OcAk68ek.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/Avli3W7BxU9HQ2SoLiXnBgGx25FoNXUSFm7OcAk68ek.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/Avli3W7BxU9HQ2SoLiXnBgGx25FoNXUSFm7OcAk68ek.png"
       },
       "rarity": "legendary"
     },
@@ -1223,9 +1225,11 @@
       "name": "Barbarian Barrel",
       "id": 28000015,
       "maxLevel": 11,
+      "maxEvolutionLevel": 2,
       "elixirCost": 2,
       "iconUrls": {
-        "medium": "https://api-assets.clashroyale.com/cards/300/Gb0G1yNy0i5cIGUHin8uoFWxqntNtRPhY_jeMXg7HnA.png"
+        "medium": "https://api-assets.clashroyale.com/cards/300/Gb0G1yNy0i5cIGUHin8uoFWxqntNtRPhY_jeMXg7HnA.png",
+        "heroMedium": "https://api-assets.clashroyale.com/cardheroes/300/Gb0G1yNy0i5cIGUHin8uoFWxqntNtRPhY_jeMXg7HnA.png"
       },
       "rarity": "epic"
     },
